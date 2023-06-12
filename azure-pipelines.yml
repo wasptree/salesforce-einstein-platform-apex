@@ -24,6 +24,7 @@ steps:
       if [ -d "force-app/main/default/pages" ]; then find ./force-app/main/default/pages -name '*.page' -exec cp '{}' $(Build.Repository.LocalPath)/veracode-temp \; ; else echo "No visualforce"; fi;
 
 - task: ArchiveFiles@2
+  displayName: Archive Veracode Analysis Files
   inputs:
     rootFolderOrFile: 'veracode-temp'
     includeRootFolder: false
