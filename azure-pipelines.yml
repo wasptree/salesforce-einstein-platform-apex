@@ -1,0 +1,44 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+
+- task: Bash@3
+  displayName: Prepare Veracode Analysis Files
+  inputs:
+    targetType: 'inline'
+    script: |
+      mkdir veracode-temp
+      if [ -d "force-app/main/default/classes" ]; then find ./force-app/main/default/classes -name '*.cls' -exec cp '{}' $(Build.Repository.LocalPath)/veracode-temp \; ; else echo "No classes"; fi;
+      if [ -d "force-app/main/default/triggers" ]; then find ./force-app/main/default/triggers -name '*.trigger' -exec cp '{}' $(Build.Repository.LocalPath)/veracode-temp \; ; else echo "No triggers"; fi;
+      if [ -d "force-app/main/default/lwc" ]; then find ./force-app/main/default/lwc -name '*.html' -o -name '*.js' -exec cp '{}' $(Build.Repository.LocalPath)/veracode-temp \; ; else echo "No lwc"; fi;
+      if [ -d "force-app/main/default/aura" ]; then find ./force-app/main/default/aura -name '*.cmp' -o -name '*.js' -o -name '*.app' -exec cp '{}' $(Build.Repository.LocalPath)/veracode-temp \; ; else echo "No aura"; fi;
+      if [ -d "force-app/main/default/pages" ]; then find ./force-app/main/default/pages -name '*.page' -exec cp '{}' $(Build.Repository.LocalPath)/veracode-temp \; ; else echo "No visualforce"; fi;
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: 'veracode-temp'
+    includeRootFolder: false
+    archiveType: 'zip'
+    archiveFile: '$(Build.Repository.LocalPath)/veracode-temp/uploadandscan.zip'
+    replaceExistingArchive: true
+    verbose: true
+
+- task: Veracode@3
+  inputs:
+    ConnectionDetailsSelection: 'Service Connection'
+    AnalysisService: 'Veracode Upload & Scan'
+    veracodeAppProfile: '$(system.teamProject)'
+    version: '$(build.buildNumber)'
+    filepath: '$(Build.Repository.LocalPath)/veracode-temp/uploadandscan.zip'
+    optargs: '-criticality medium'
+    createProfile: true
+    maximumWaitTime: '360'
